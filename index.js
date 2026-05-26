@@ -101,6 +101,7 @@ const headerFooterInputContainer = document.getElementById("header-footer-input-
 const pageNumberToggle = document.getElementById("page-number-toggle");
 const headerTextInput = document.getElementById("header-text");
 const footerTextInput = document.getElementById("footer-text");
+const pipToggleBtn = document.getElementById("pip-toggle-btn");
 
 // Zoom controls
 const zoomInBtn = document.getElementById("zoom-in");
@@ -180,8 +181,37 @@ headerFooterToggle.addEventListener("change", (e) => {
    3. Zoom Control Handlers
    ========================================================================== */
 function updateZoom() {
-  pagesContainer.style.setProperty("--zoom-scale", zoomLevel);
+  let finalScale = zoomLevel;
+  const isMobile = window.innerWidth < 992;
+  
+  // Dynamic A4 simulation paper shrinker for mobile and tablet screens
+  if (isMobile) {
+    const viewportWidth = canvasViewport.clientWidth - 20; // 10px padding safety buffer
+    const paperWidth = 794; // A4 standard 210mm in pixels at 96 DPI
+    if (viewportWidth < paperWidth) {
+      finalScale = (viewportWidth / paperWidth) * zoomLevel;
+    }
+  }
+  
+  pagesContainer.style.setProperty("--zoom-scale", finalScale);
   zoomValBadge.textContent = `${Math.round(zoomLevel * 100)}%`;
+  
+  // Dynamically set canvas-viewport height to match the scaled A4 paper height
+  // to completely eliminate the classic CSS transform blank layout spacing bug!
+  if (activeQueueIndex !== -1 && !previewArea.classList.contains("pip-active")) {
+    if (isMobile) {
+      // A4 paper is 297mm high (~1123px at 96 DPI).
+      // We set the viewport container's height to exactly match this scaled height.
+      const scaledHeight = 1123 * finalScale;
+      canvasViewport.style.height = `${scaledHeight + 40}px`;
+    } else {
+      // Reset height to default on desktop layouts
+      canvasViewport.style.height = "";
+    }
+  } else {
+    // Reset height to default when queue is empty or inside active PiP floating mode
+    canvasViewport.style.height = "";
+  }
 }
 
 zoomInBtn.addEventListener("click", () => {
@@ -197,6 +227,9 @@ zoomOutBtn.addEventListener("click", () => {
     updateZoom();
   }
 });
+
+// Auto-scale virtual paper on mobile screen resize and orientation changes
+window.addEventListener("resize", updateZoom);
 
 /* ==========================================================================
    4. Custom Layout Sliders Real-time Updates
@@ -271,6 +304,11 @@ clearQueueBtn.addEventListener("click", () => {
   batchDownloadBtn.style.display = "none";
   zoomInBtn.setAttribute("disabled", "true");
   zoomOutBtn.setAttribute("disabled", "true");
+  pipToggleBtn.setAttribute("disabled", "true");
+  pipToggleBtn.style.display = "none";
+  if (previewArea.classList.contains("pip-active")) {
+    togglePipMode();
+  }
   previewStatusText.innerHTML = `<span class="dot pulse-dot yellow"></span> 대기 중: DOCX 파일을 등록해 주세요`;
 });
 
@@ -451,6 +489,8 @@ async function previewQueueItem(index) {
   downloadBtn.removeAttribute("disabled");
   zoomInBtn.removeAttribute("disabled");
   zoomOutBtn.removeAttribute("disabled");
+  pipToggleBtn.removeAttribute("disabled");
+  pipToggleBtn.style.display = "flex";
   
   if (item.status === "completed") {
     renderDocument();
@@ -743,3 +783,107 @@ async function generateAndDownloadBatchPDFs() {
 // Event Bindings
 downloadBtn.addEventListener("click", generateAndDownloadSinglePDF);
 batchDownloadBtn.addEventListener("click", generateAndDownloadBatchPDFs);
+
+/* ==========================================================================
+   11. Draggable Mobile Picture-in-Picture (PiP) Preview Engine
+   ========================================================================== */
+const previewArea = document.querySelector(".preview-area");
+const previewHeader = document.querySelector(".preview-header");
+
+let isDragging = false;
+let startX, startY;
+
+// Toggle PiP Mode and reset inline layout attributes on disable
+function togglePipMode() {
+  const isPip = previewArea.classList.toggle("pip-active");
+  const icon = pipToggleBtn.querySelector("i");
+  
+  if (isPip) {
+    icon.className = "fa-solid fa-window-restore";
+    pipToggleBtn.title = "원래 위치로 복귀";
+    // Place PiP in standard bottom right with safety offsets
+    const initialWidth = 180;
+    const initialHeight = 254;
+    previewArea.style.left = `${window.innerWidth - initialWidth - 20}px`;
+    previewArea.style.top = `${window.innerHeight - initialHeight - 20}px`;
+    previewArea.style.bottom = "auto";
+    previewArea.style.right = "auto";
+  } else {
+    icon.className = "fa-solid fa-images";
+    pipToggleBtn.title = "화면 띄우기 (PiP)";
+    // Clear custom coordinates to return to standard layout flow
+    previewArea.style.left = "";
+    previewArea.style.top = "";
+    previewArea.style.bottom = "";
+    previewArea.style.right = "";
+  }
+  
+  // Re-render zoom and scale ratios instantly
+  updateZoom();
+}
+
+pipToggleBtn.addEventListener("click", togglePipMode);
+
+// Drag handlers for mouse and touch interactions
+function dragStart(e) {
+  if (!previewArea.classList.contains("pip-active")) return;
+  
+  // Ignore clicks on icons inside the header buttons
+  if (e.target.closest(".preview-zoom-btn")) return;
+  
+  isDragging = true;
+  
+  const clientX = e.type.startsWith("touch") ? e.touches[0].clientX : e.clientX;
+  const clientY = e.type.startsWith("touch") ? e.touches[0].clientY : e.clientY;
+  
+  const rect = previewArea.getBoundingClientRect();
+  startX = clientX - rect.left;
+  startY = clientY - rect.top;
+  
+  previewArea.style.transition = "none"; // Fluid real-time drag
+  
+  if (e.type.startsWith("touch")) {
+    e.preventDefault(); // Stop mobile elastic scroll
+  }
+}
+
+function drag(e) {
+  if (!isDragging) return;
+  
+  const clientX = e.type.startsWith("touch") ? e.touches[0].clientX : e.clientX;
+  const clientY = e.type.startsWith("touch") ? e.touches[0].clientY : e.clientY;
+  
+  let newX = clientX - startX;
+  let newY = clientY - startY;
+  
+  // Lock within active viewport boundaries
+  const minX = 0;
+  const maxX = window.innerWidth - previewArea.offsetWidth;
+  const minY = 0;
+  const maxY = window.innerHeight - previewArea.offsetHeight;
+  
+  newX = Math.max(minX, Math.min(newX, maxX));
+  newY = Math.max(minY, Math.min(newY, maxY));
+  
+  previewArea.style.left = `${newX}px`;
+  previewArea.style.top = `${newY}px`;
+  
+  if (e.type.startsWith("touch")) {
+    e.preventDefault();
+  }
+}
+
+function dragEnd() {
+  if (!isDragging) return;
+  isDragging = false;
+  previewArea.style.transition = "width 0.3s ease, height 0.3s ease, box-shadow var(--transition-fast)";
+}
+
+// Attach drag listeners to preview-header
+previewHeader.addEventListener("mousedown", dragStart);
+document.addEventListener("mousemove", drag);
+document.addEventListener("mouseup", dragEnd);
+
+previewHeader.addEventListener("touchstart", dragStart, { passive: false });
+document.addEventListener("touchmove", drag, { passive: false });
+document.addEventListener("touchend", dragEnd);

@@ -1021,7 +1021,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   box-shadow: var(--paper-shadow);
   box-sizing: border-box;
   position: relative;
-  word-break: break-word;
+  word-break: keep-all;
+  overflow-wrap: break-word;
   border-radius: 4px;
   transition: padding var(--transition-medium);
   font-size: 14px; /* Controlled dynamically by JS */
@@ -1064,7 +1065,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* 6. Document Internal Tag Formatting (Inside Virtual Paper) */
 .pages-container p {
   margin-bottom: 1em;
-  word-break: break-all;
+  word-break: keep-all;
+  overflow-wrap: break-word;
   white-space: pre-wrap;
 }
 
@@ -1178,5 +1180,202 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border: none !important;
     background: transparent !important;
     display: block !important;
+  }
+}
+
+/* 8. Premium Responsive Layout for Mobile Devices (Breakpoints) */
+@media (max-width: 992px) {
+  body {
+    overflow-y: auto !important;
+    height: auto !important;
+  }
+
+  .app-container {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    overflow-y: visible !important;
+    padding: 20px !important;
+    backdrop-filter: none !important;
+  }
+
+  .preview-area {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 50vh !important;
+    overflow: visible !important;
+  }
+
+  .preview-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .canvas-viewport {
+    padding: 20px 10px !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .pages-container {
+    margin: 0 auto !important;
+  }
+
+  /* Optimize Welcome cards on mobile */
+  .features-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  .default-view h2 {
+    font-size: 20px !important;
+  }
+  
+  .default-view p {
+    font-size: 12px !important;
+    margin-bottom: 20px !important;
+  }
+}
+
+/* PiP Toggle Button Display (Global) */
+#pip-toggle-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+}
+
+/* Sleek Floating PiP Window Styles (Global Breakout) */
+.preview-area.pip-active {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  position: fixed !important;
+  width: 180px !important;
+    height: 254px !important; /* A4 aspect ratio 1:1.41 */
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4) !important;
+    border: 2px solid var(--accent-color) !important;
+    z-index: 1000 !important;
+    overflow: hidden !important;
+    background-color: var(--card-bg) !important;
+    transition: width 0.3s ease, height 0.3s ease, box-shadow var(--transition-fast) !important;
+  }
+
+  /* Simplified drag-handle header in PiP mode */
+  .preview-area.pip-active .preview-header {
+    height: 32px !important;
+    padding: 0 10px !important;
+    cursor: move !important;
+    background: var(--accent-gradient) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+  }
+
+  .preview-area.pip-active .preview-header .preview-status {
+    display: none !important; /* Hide details on small thumbnail */
+  }
+
+  .preview-area.pip-active .preview-header .preview-controls {
+    width: 100% !important;
+    justify-content: flex-end !important;
+    gap: 4px !important;
+  }
+
+  .preview-area.pip-active .preview-header .preview-zoom-btn {
+    width: 22px !important;
+    height: 22px !important;
+    border: none !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    border-radius: 4px !important;
+  }
+
+  .preview-area.pip-active .preview-header #zoom-out,
+  .preview-area.pip-active .preview-header #zoom-in,
+  .preview-area.pip-active .preview-header .zoom-badge {
+    display: none !important; /* Hide zoom factors in PIP layout */
+  }
+
+  .preview-area.pip-active .canvas-viewport {
+    padding: 8px !important;
+    overflow: hidden !important;
+    height: calc(100% - 32px) !important;
+    width: 100% !important;
+    background: #e2e8f0 !important; /* Elegant paper workspace backdrop */
+  }
+
+  .preview-area.pip-active .pages-container {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 auto !important;
+  }
+
+/* 9. Ultra-Small Viewport Optimizations (max-width: 480px) */
+@media (max-width: 480px) {
+  .sidebar {
+    padding: 12px !important;
+    gap: 16px !important;
+  }
+
+  .sidebar-header {
+    padding-bottom: 12px !important;
+  }
+
+  .brand-logo {
+    height: 34px !important;
+    width: 34px !important;
+    font-size: 16px !important;
+  }
+
+  .brand-text h1 {
+    font-size: 17px !important;
+  }
+
+  .brand-text p {
+    font-size: 9px !important;
+  }
+
+  .control-section {
+    gap: 12px !important;
+  }
+
+  .control-group {
+    gap: 6px !important;
+  }
+
+  .toggle-group-expanded {
+    padding: 8px !important;
+  }
+
+  .toggle-group {
+    padding: 8px !important;
+    gap: 8px !important;
+  }
+
+  .toggle-title {
+    font-size: 11px !important;
+  }
+
+  .toggle-desc {
+    font-size: 9px !important;
+  }
+
+  .btn {
+    font-size: 12px !important;
+    padding: 8px 14px !important;
+  }
+
+  .privacy-badge {
+    padding: 8px !important;
+    font-size: 10px !important;
   }
 }
