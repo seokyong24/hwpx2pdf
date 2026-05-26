@@ -183,10 +183,13 @@ headerFooterToggle.addEventListener("change", (e) => {
 function updateZoom() {
   let finalScale = zoomLevel;
   const isMobile = window.innerWidth < 992;
+  const isPip = previewArea.classList.contains("pip-active");
   
-  // Dynamic A4 simulation paper shrinker for mobile and tablet screens
-  if (isMobile) {
-    const viewportWidth = canvasViewport.clientWidth - 20; // 10px padding safety buffer
+  // Dynamic A4 simulation paper shrinker for mobile and PIP floating screens
+  if (isMobile || isPip) {
+    // Hardcode the target PiP viewport width (144px) to bypass browser layout transitions timing lag!
+    // 180px card - 16px viewport padding - 20px safety buffer = 144px target viewport
+    let viewportWidth = isPip ? 144 : (canvasViewport.clientWidth - 20);
     const paperWidth = 794; // A4 standard 210mm in pixels at 96 DPI
     if (viewportWidth < paperWidth) {
       finalScale = (viewportWidth / paperWidth) * zoomLevel;
@@ -504,6 +507,11 @@ async function previewQueueItem(index) {
       hideLoading();
       previewStatusText.innerHTML = `<span class="dot pulse-dot green"></span> 변환 완료: ${item.file.name}`;
     }
+  }
+  
+  // If we are in mobile view (width < 992px), automatically activate PiP mode on document load!
+  if (window.innerWidth < 992 && !previewArea.classList.contains("pip-active")) {
+    togglePipMode();
   }
 }
 
