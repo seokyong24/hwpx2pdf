@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DOCX to PDF - 100% 로컬 엔터프라이즈 변환기</title>
+  <meta name="description" content="개인정보 유출 걱정 없는 100% 브라우저 연산 방식 DOCX to PDF 변환기. 다중 일괄 변환, 비밀번호 보안 암호화, 워터마크, 쪽번호 추가 기능을 지원합니다.">
+  
+  <!-- SEO & OpenGraph -->
+  <meta property="og:title" content="DOCX to PDF 변환기 - 로컬 엔터프라이즈">
+  <meta property="og:description" content="다중 문서 일괄 변환, 비밀번호 암호화, 워터마크, 헤더/푸터 및 쪽번호 추가가 가능한 100% 안전한 로컬 PDF 변환 서비스">
+  <meta property="og:type" content="website">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="index.css">
+  
+  <!-- Core CDNs -->
+  <!-- Mammoth.js for converting .docx to HTML client-side -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
+  <!-- html2pdf.js for exporting HTML structure to PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+  <!-- Layout Container -->
+  <div class="app-container">
+    
+    <!-- Sidebar Control Panel -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-logo">
+            <i class="fa-solid fa-file-word"></i>
+          </div>
+          <div class="brand-text">
+            <h1>DOCX <span class="accent-text">2</span> PDF</h1>
+            <p>Enterprise Local Converter</p>
+          </div>
+        </div>
+        <button id="theme-toggle" class="theme-btn" aria-label="테마 전환" title="라이트/다크 모드 토글">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+      
+      <!-- Upload Section -->
+      <div class="control-section upload-section">
+        <div class="section-title">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span>문서 업로드</span>
+        </div>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="file-input" accept=".docx" multiple style="display: none;">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">
+              <i class="fa-solid fa-file-word pulse-icon"></i>
+            </div>
+            <p class="dropzone-main-text">DOCX 파일을 드래그하여 놓으세요</p>
+            <p class="dropzone-sub-text">여러 파일 동시 업로드 가능</p>
+            <button class="btn btn-secondary select-btn">파일 찾기</button>
+          </div>
+        </div>
+        
+        <!-- Batch File Queue List Container -->
+        <div id="file-queue-wrapper" class="file-queue-wrapper" style="display: none;">
+          <div class="queue-header">
+            <span>대기열 목록 (<span id="queue-count">0</span>)</span>
+            <button id="clear-queue-btn" class="clear-btn">전체 삭제</button>
+          </div>
+          <ul class="queue-list" id="queue-list">
+            <!-- Queue items injected by JS -->
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Settings Section -->
+      <div class="control-section settings-section">
+        <div class="section-title">
+          <i class="fa-solid fa-sliders"></i>
+          <span>실시간 레이아웃 커스텀</span>
+        </div>
+        
+        <div class="control-group">
+          <div class="control-label">
+            <span>기본 글꼴 크기</span>
+            <span id="font-size-val" class="badge">14px</span>
+          </div>
+          <input type="range" id="font-size-slider" min="10" max="24" value="14" step="1">
+        </div>
+        
+        <div class="control-group">
+          <div class="control-label">
+            <span>문서 여백 (Margin)</span>
+            <span id="margin-val" class="badge">20mm</span>
+          </div>
+          <input type="range" id="margin-slider" min="5" max="40" value="20" step="1">
+        </div>
+        
+        <div class="control-group">
+          <div class="control-label">
+            <span>줄 간격 (Line Height)</span>
+            <span id="line-height-val" class="badge">1.6</span>
+          </div>
+          <input type="range" id="line-height-slider" min="1.0" max="2.5" value="1.6" step="0.1">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span>기본 서체 지정</span>
+          </div>
+          <div class="custom-select-wrapper">
+            <select id="font-family-select" class="custom-select">
+              <option value="original">문서 원래 서체 사용</option>
+              <option value="'Noto Sans KR', sans-serif">본고딕 (Noto Sans KR)</option>
+              <option value="'Inter', 'Noto Sans KR', sans-serif">인터 (Inter + Noto)</option>
+              <option value="'Outfit', sans-serif">아웃핏 (Outfit)</option>
+              <option value="system-ui, -apple-system, sans-serif">시스템 기본 서체</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="toggle-group">
+          <label class="toggle-switch">
+            <input type="checkbox" id="force-wrap-toggle" checked>
+            <span class="slider-toggle"></span>
+          </label>
+          <div class="toggle-text">
+            <span class="toggle-title">표 너비 자동 맞춤</span>
+            <span class="toggle-desc">화면 밖으로 나가는 표를 용지에 맞춤</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Advanced Document Security & Output Options -->
+      <div class="control-section advanced-section">
+        <div class="section-title">
+          <i class="fa-solid fa-gears"></i>
+          <span>고급 인쇄 및 보안 설정</span>
+        </div>
+        
+        <!-- PDF capacity/size optimization selection -->
+        <div class="control-group">
+          <div class="control-label">
+            <span>PDF 용량 및 화질 최적화</span>
+          </div>
+          <div class="custom-select-wrapper">
+            <select id="pdf-quality-select" class="custom-select">
+              <option value="standard">일반 균형 화질 (용량 보통)</option>
+              <option value="high">초고화질 선명함 (용량 큼)</option>
+              <option value="compressed">저용량 고압축 (용량 최소화)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Password lock toggle -->
+        <div class="toggle-group-expanded">
+          <div class="toggle-group">
+            <label class="toggle-switch">
+              <input type="checkbox" id="security-toggle">
+              <span class="slider-toggle"></span>
+            </label>
+            <div class="toggle-text">
+              <span class="toggle-title">비밀번호 기밀 설정</span>
+              <span class="toggle-desc">PDF를 열 때 비밀번호를 요구합니다</span>
+            </div>
+          </div>
+          <div class="sub-input-container" id="security-input-container" style="display: none; margin-top: 10px;">
+            <div class="input-icon-wrapper">
+              <i class="fa-solid fa-lock input-icon"></i>
+              <input type="password" id="pdf-password" class="custom-input" placeholder="비밀번호 입력 (최소 1자)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Watermark options -->
+        <div class="toggle-group-expanded">
+          <div class="toggle-group">
+            <label class="toggle-switch">
+              <input type="checkbox" id="watermark-toggle">
+              <span class="slider-toggle"></span>
+            </label>
+            <div class="toggle-text">
+              <span class="toggle-title">기밀 워터마크 추가</span>
+              <span class="toggle-desc">용지 배경에 반투명 문구를 삽입합니다</span>
+            </div>
+          </div>
+          <div class="sub-input-container" id="watermark-input-container" style="display: none; margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="watermark-text" class="custom-input" value="CONFIDENTIAL" placeholder="워터마크 문구 입력">
+            
+            <div class="toggle-group" style="padding: 5px; background: transparent; border: none;">
+              <label class="toggle-switch" style="width: 32px; height: 16px; margin-top: 0;">
+                <input type="checkbox" id="watermark-security-toggle" checked>
+                <span class="slider-toggle" style="border-radius: 16px;"></span>
+              </label>
+              <div class="toggle-text"><span class="toggle-title" style="font-size: 11px; color: var(--text-main);">인쇄 일시 및 IP 주소 추가</span></div>
+            </div>
+
+            <div class="control-label" style="font-size: 11px;">
+              <span>워터마크 크기</span>
+              <span id="watermark-size-val">12px</span>
+            </div>
+            <input type="range" id="watermark-size" min="6" max="24" value="12" step="1">
+
+            <div class="control-label" style="font-size: 11px;">
+              <span>워터마크 투명도</span>
+              <span id="watermark-opacity-val">0.15</span>
+            </div>
+            <input type="range" id="watermark-opacity" min="0.05" max="0.4" value="0.15" step="0.05">
+          </div>
+        </div>
+
+        <!-- Headers and Footers / Page Numbering -->
+        <div class="toggle-group-expanded">
+          <div class="toggle-group">
+            <label class="toggle-switch">
+              <input type="checkbox" id="header-footer-toggle">
+              <span class="slider-toggle"></span>
+            </label>
+            <div class="toggle-text">
+              <span class="toggle-title">쪽번호 및 머리글/바닥글</span>
+              <span class="toggle-desc">페이지 상하단에 페이지수와 문구를 넣습니다</span>
+            </div>
+          </div>
+          <div class="sub-input-container" id="header-footer-input-container" style="display: none; margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+            <div class="toggle-group" style="padding: 5px; background: transparent; border: none;">
+              <label class="toggle-switch" style="width: 32px; height: 16px;">
+                <input type="checkbox" id="page-number-toggle" checked>
+                <span class="slider-toggle" style="border-radius: 16px;"></span>
+              </label>
+              <div class="toggle-text"><span class="toggle-title" style="font-size: 11px;">페이지 번호 매기기 (우측 하단)</span></div>
+            </div>
+            <input type="text" id="header-text" class="custom-input" placeholder="머리글 삽입 (좌측 상단 - 생략가능)">
+            <input type="text" id="footer-text" class="custom-input" placeholder="바닥글 삽입 (좌측 하단 - 생략가능)">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Actions Section -->
+      <div class="control-section actions-section">
+        <!-- Main Single Export Button -->
+        <button id="download-btn" class="btn btn-primary btn-block btn-glowing" disabled>
+          <i class="fa-solid fa-file-arrow-down"></i>
+          <span id="download-btn-text">PDF 다운로드</span>
+        </button>
+
+        <!-- Batch Download All Button (Only displayed in queue mode) -->
+        <button id="batch-download-btn" class="btn btn-secondary btn-block" style="display: none;">
+          <i class="fa-solid fa-file-zipper"></i>
+          <span>대기열 일괄 변환 및 다운로드</span>
+        </button>
+        
+        <!-- Privacy Info Badge -->
+        <div class="privacy-badge">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span>어떠한 데이터도 외부 서버로 전송되지 않고 100% 로컬 브라우저에서 안전하게 실행됩니다.</span>
+        </div>
+      </div>
+    </aside>
+    
+    <!-- Main Content Area (Previewer Canvas) -->
+    <main class="preview-area">
+      <!-- Status Bar / Header of Previewer -->
+      <div class="preview-header">
+        <div class="preview-status" id="preview-status-text">
+          <span class="dot pulse-dot yellow"></span> 대기 중: DOCX 파일을 등록해 주세요
+        </div>
+        <div class="preview-controls">
+          <button class="preview-zoom-btn" id="zoom-out" title="축소" disabled><i class="fa-solid fa-minus"></i></button>
+          <span id="zoom-val" class="zoom-badge">100%</span>
+          <button class="preview-zoom-btn" id="zoom-in" title="확대" disabled><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      
+      <!-- Interactive Paper Canvas Container -->
+      <div class="canvas-viewport" id="canvas-viewport">
+        <!-- Default State: Drop File to Begin -->
+        <div class="default-view" id="default-view">
+          <div class="glow-container">
+            <div class="glow-circle"></div>
+          </div>
+          <div class="default-icon">
+            <i class="fa-solid fa-file-word"></i>
+          </div>
+          <h2>DOCX 일괄 및 보안 변환기</h2>
+          <p>여기에 DOCX 단일 또는 다중 파일을 드롭하거나 왼쪽 패널에서 선택하여<br>실시간으로 문서를 최적화하고 일괄 암호화 다운로드하세요.</p>
+          <div class="features-grid">
+            <div class="feature-card">
+              <i class="fa-solid fa-file-zipper"></i>
+              <h3>일괄 (Batch) 변환</h3>
+              <p>대량의 문서를 클릭 한 번으로 연속 PDF 처리</p>
+            </div>
+            <div class="feature-card">
+              <i class="fa-solid fa-lock"></i>
+              <h3>로컬 암호화 보안</h3>
+              <p>웹상 기밀보장을 위한 128bit 보안 비번 주입</p>
+            </div>
+            <div class="feature-card">
+              <i class="fa-solid fa-signature"></i>
+              <h3>워터마크 & 쪽번호</h3>
+              <p>머리글, 바닥글, 페이지수와 워터마크 자동 매핑</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Loading Spinner overlay -->
+        <div class="loading-overlay" id="loading-overlay" style="display: none;">
+          <div class="loader">
+            <div class="spinner"></div>
+            <div class="loader-text">DOCX 파일 분석 중...</div>
+            <div class="loader-sub">잠시만 기다려주세요</div>
+          </div>
+        </div>
+
+        <!-- Rendered Pages Output (A4 sheet templates) -->
+        <div class="pages-container" id="pages-container" style="display: none;">
+          <!-- A4 virtual sheets will be injected here dynamically -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Main JavaScript Logic -->
+  <script src="index.js"></script>
+</body>
+</html>
